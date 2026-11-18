@@ -51,6 +51,10 @@ def build_stub(root: Path) -> None:
             self._uid = uid
             self.message_obj = None
             self.context = None
+            self.sent_chains = []
+
+        async def send(self, chain):
+            self.sent_chains.append(chain)
 
         def is_admin(self):
             return True
@@ -298,8 +302,8 @@ def main() -> int:
     print(("  [OK] " if b64_ok else "  [X ] ") + f"base64 内联 -> {res.strategy}")
 
     res, ev = asyncio.run(try_mode("native"))
-    nat_ok = res.ok and ev.context.sent and len(ev.context.sent[0][1].chain) == 1
-    print(("  [OK] " if nat_ok else "  [X ] ") + f"native 文件段 -> {res.strategy} {res.attempts}")
+    nat_ok = res.ok and ev.sent_chains and len(ev.sent_chains[0].chain) == 1
+    print(("  [OK] " if nat_ok else "  [X ] ") + f"native 文件段（event.send）-> {res.strategy}")
 
     priv = senders.Target(kind="private", ident="42", umo="aiocqhttp:private:42")
     res, ev = asyncio.run(try_mode("onebot", priv))
@@ -310,6 +314,73 @@ def main() -> int:
     res, ev = asyncio.run(try_mode("auto"))
     a_ok = res.ok and res.strategy in ("onebot", "native")
     print(("  [OK] " if a_ok else "  [X ] ") + f"auto 调度 -> {res.strategy}")
+
+    # ---------------- QQ 官方机器人 ---------------------------- #
+    class FakeQQEvent(FakeEvent):
+        """qq_official 拿不到数字 ID，只有 openid 和 unified_msg_origin。"""
+
+        def __init__(self):
+            super().__init__(gid="")
+            self.unified_msg_origin = "qq_official:GroupMessage:GRPOPENID1"
+            self._uid = ""
+            self.bot = None
+
+        def get_platform_name(self):
+            return "qq_official"
+
+    ev_qq = FakeQQEvent()
+    tgt_qq = senders.current_target(ev_qq)
+    qq_t_ok = (
+        tgt_qq is not None
+        and tgt_qq.kind == "group"
+        and tgt_qq.umo == "qq_official:GroupMessage:GRPOPENID1"
+    )
+    print(("  [OK] " if qq_t_ok else "  [X ] ") + f"qq_official 会话识别 -> {tgt_qq}")
+
+    async def try_qq():
+        ev = FakeQQEvent()
+        return await senders.deliver(
+            ev, senders.current_target(ev), [(sample, "hello.txt")], senders.SendCfg(mode="auto")
+        ), ev
+
+    rqq, evqq = asyncio.run(try_qq())
+    qq_ok = rqq.ok and rqq.strategy == "native" and bool(evqq.sent_chains)
+    print(("  [OK] " if qq_ok else "  [X ] ") + f"qq_official 走 native -> {rqq.strategy} {rqq.attempts}")
+
+    # event.send 挂了要退到 context.send_message（跨平台老版本兼容）
+    class BrokenSendEvent(FakeEvent):
+        async def send(self, chain):
+            raise RuntimeError("被动回复窗口已过期")
+
+    async def try_fallback():
+        ev = BrokenSendEvent()
+        return await senders.deliver(
+            ev, target, [(sample, "hello.txt")], senders.SendCfg(mode="native")
+        ), ev
+
+    rfb, evfb = asyncio.run(try_fallback())
+    fb_ok = rfb.ok and bool(evfb.context.sent)
+    print(("  [OK] " if fb_ok else "  [X ] ") + f"event.send 失败退 context -> {rfb.strategy}")
+
+    # qq_official 全失败时，回执要带上排查提示
+    class DeadCtx:
+        async def send_message(self, umo, chain):
+            raise RuntimeError("qq_official 不支持主动消息")
+
+    class DeadQQEvent(FakeQQEvent):
+        async def send(self, chain):
+            raise RuntimeError("No permission to upload file")
+
+    async def try_dead():
+        ev = DeadQQEvent()
+        ev.context = DeadCtx()
+        return await senders.deliver(
+            ev, senders.current_target(ev), [(sample, "hello.txt")], senders.SendCfg(mode="auto")
+        )
+
+    rdead = asyncio.run(try_dead())
+    dead_ok = (not rdead.ok) and "QQ 官方机器人" in (rdead.detail or "")
+    print(("  [OK] " if dead_ok else "  [X ] ") + f"qq_official 失败提示 -> {rdead.detail}")
 
     # 超限拦截
     big = tmp / "big.bin"
