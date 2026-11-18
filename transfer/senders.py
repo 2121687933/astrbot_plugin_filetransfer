@@ -101,6 +101,11 @@ def _is_onebot_platform(platform: str) -> bool:
     return any(key in platform for key in ("aiocqhttp", "onebot", "napcat", "lagrange"))
 
 
+def _is_qq_official_platform(platform: str) -> bool:
+    """QQ 官方机器人（qq_official / qq_official_webhook）。"""
+    return "qq_official" in platform or "qqofficial" in platform
+
+
 def _get_bot(event: Any) -> Any:
     return getattr(event, "bot", None)
 
@@ -172,6 +177,13 @@ def current_target(event: Any) -> Optional[Target]:
         return Target(kind="group", ident=gid, umo=umo)
     if uid:
         return Target(kind="private", ident=uid, umo=umo)
+    # qq_official 这类平台拿不到数字 ID（只有 openid），从 unified_msg_origin 里推
+    # 格式：平台名:消息类型:会话ID
+    parts = [p for p in umo.split(":") if p]
+    if len(parts) >= 3:
+        head = (parts[0] + parts[1]).lower()
+        kind = "group" if "group" in head else "private"
+        return Target(kind=kind, ident=parts[-1], umo=umo)
     return None
 
 
@@ -279,32 +291,45 @@ def _build_file_chain(path: Path, name: str) -> Any:
 
 
 async def _send_via_native(event: Any, target: Target, path: Path, name: str) -> Tuple[bool, str]:
+    """走 AstrBot 内核的 File 消息段。
+
+    同会话优先 ``event.send()``：QQ 官方机器人不支持 ``context.send_message``
+    （AstrBot 的文档里明说了），而且被动回复窗口内只有 event.send 发得出去。
+    跨会话才退到 ``context.send_message``。
+    """
     try:
         chain = _build_file_chain(path, name)
     except Exception as exc:  # noqa: BLE001
         return False, f"构造文件消息失败：{str(exc)[:160]}"
-    umo = str(getattr(event, "unified_msg_origin", "") or target.umo)
-    if not umo:
-        return False, "当前事件没有 unified_msg_origin"
 
+    event_umo = str(getattr(event, "unified_msg_origin", "") or "")
+    umo = str(event_umo or target.umo)
+    same_session = not target.umo or not event_umo or target.umo == event_umo
+    errors: List[str] = []
+
+    # 1) 同会话：用事件自己的发送通道（被动回复）
+    if same_session:
+        send = getattr(event, "send", None)
+        if callable(send):
+            try:
+                await _maybe_await(send(chain))
+                return True, ""
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"event.send: {str(exc)[:150]}")
+
+    # 2) 主动推送（aiocqhttp / telegram 等支持；qq_official 不支持）
     ctx = getattr(event, "context", None)
     sender = getattr(ctx, "send_message", None) if ctx is not None else None
-    if not callable(sender):
-        # 老办法：直接走事件自己的发送通道
-        send = getattr(event, "send", None)
-        if not callable(send):
-            return False, "context 和 event 都没有发送接口"
+    if callable(sender) and umo:
         try:
-            await _maybe_await(send(chain))
+            await _maybe_await(sender(umo, chain))
             return True, ""
         except Exception as exc:  # noqa: BLE001
-            return False, str(exc)[:200]
+            errors.append(f"send_message: {str(exc)[:150]}")
 
-    try:
-        await _maybe_await(sender(umo, chain))
-        return True, ""
-    except Exception as exc:  # noqa: BLE001
-        return False, str(exc)[:200]
+    if not errors:
+        return False, "这个平台没有可用的发送接口"
+    return False, " / ".join(errors)
 
 
 # ---------------------------------------------------------------------- #
@@ -408,6 +433,10 @@ async def deliver(
         result.detail = f"发出 {result.sent}/{len(items)} 个，剩下的没成功"
     elif not result.detail:
         result.detail = "一次都没发出去"
+    if not result.ok and _is_qq_official_platform(platform):
+        result.detail = (result.detail or "") + (
+            "｜QQ 官方机器人发文件要求机器人在群里且有文件权限，单文件也不能太大"
+        )
     return result
 
 
