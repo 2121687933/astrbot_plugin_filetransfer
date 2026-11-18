@@ -28,7 +28,7 @@ desc: |
   - 频率限制与单文件大小上限
 version: 1.0.0
 author: 大肥鱼
-repo: https://github.com/USERNAME/astrbot_plugin_filetransfer
+repo: https://github.com/2121687933/astrbot_plugin_filetransfer
 astrbot_version: ">=4.16,<5"
 tags:
   - 文件
