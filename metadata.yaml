@@ -6,15 +6,16 @@ desc: |
 
   常用命令：/取 发文件、/目录 看目录、/打包 压缩后发送、/转 转发到其他群或私聊、/存 收进服务器、/收件箱 看收到的文件、/文件信息 看大小和 SHA256。中英文命令都能用，比如 /fileget 和 /取 等价。
 
-  发送通道自动兜底：OneBot 扩展接口（upload_group_file / upload_private_file）→ AstrBot 原生文件消息段 → base64 内联 → 直连 OneBot HTTP。NapCat、Lagrange、SnowLuma、go-cqhttp 都开箱可用，也兼容 Telegram 等非 OneBot 平台。
+  发送通道自动兜底：OneBot 扩展接口（upload_group_file / upload_private_file）→ AstrBot 原生文件消息段 → base64 内联 → 直连 OneBot HTTP。NapCat、Lagrange、SnowLuma、go-cqhttp 开箱可用；QQ 官方机器人（qq_official）走内核文件消息段、按被动回复发送，也能发文件；同样兼容 Telegram 等平台。
 
   安全方面：路径白名单，默认只允许配置的目录；拦截 .. 穿越与符号链接逃逸；敏感文件黑名单（.env、*.pem、id_rsa、authorized_keys、.ssh、.git 等）；默认仅管理员可用，可另配用户 / 群白名单；带频率限制与单文件大小上限。
-version: 1.0.0
+version: 1.1.0
 author: 大肥鱼
 repo: https://github.com/2121687933/astrbot_plugin_filetransfer
 astrbot_version: ">=4.16,<5"
 support_platforms:
   - aiocqhttp
+  - qq_official
 tags:
   - 文件
   - 工具
