@@ -1,0 +1,37 @@
+name: astrbot_plugin_filetransfer
+display_name: 文件传输
+short_desc: 把服务器上的文件发到 QQ，也能把 QQ 文件收进服务器
+desc: |
+  让跑在服务器上的机器人把本机文件发到 QQ 群聊 / 私聊，也能把 QQ 发来的文件存进服务器。
+
+  ## 功能
+
+  - **取文件**：`/取 <路径>` 把服务器上的文件发到当前会话，支持序号快捷选择
+  - **看目录**：`/目录 <路径>` 浏览服务器目录，只读
+  - **打包发送**：`/打包 <路径...>` 把多个文件或文件夹压成 zip 再发
+  - **跨会话转发**：`/转 <目标> <路径>` 把文件发到另一个群或私聊
+  - **存文件**：`/存` 把 QQ 发来的文件收进服务器，支持批量
+  - **收件箱**：`/收件箱` 查看最近收到的文件
+  - **文件信息**：`/文件信息 <路径>` 查看大小、修改时间、SHA256
+
+  ## 发送通道
+
+  自动按顺序尝试：OneBot 扩展接口（`upload_group_file` / `upload_private_file`）→ AstrBot 原生文件消息段 → base64 内联 → 直连 OneBot HTTP。
+  NapCat、Lagrange、SnowLuma、go-cqhttp 都能直接用，也兼容 Telegram 等非 OneBot 平台。
+
+  ## 安全
+
+  - 路径白名单，默认只允许配置里的目录
+  - 拦截 `..` 穿越和符号链接逃逸
+  - 敏感文件黑名单（`.env`、`*.pem`、`id_rsa`、`authorized_keys`、`.ssh`、`.git` 等）
+  - 默认仅管理员可用，可配用户 / 群白名单
+  - 频率限制与单文件大小上限
+version: 1.0.0
+author: 大肥鱼
+repo: https://github.com/USERNAME/astrbot_plugin_filetransfer
+astrbot_version: ">=4.16,<5"
+tags:
+  - 文件
+  - 工具
+  - 效率
+social_link: ""

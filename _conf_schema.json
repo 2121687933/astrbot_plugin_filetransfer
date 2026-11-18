@@ -1,0 +1,105 @@
+{
+  "allow_dirs": {
+    "description": "允许访问的目录",
+    "type": "list",
+    "hint": "只有这些目录下的文件能被发送出去，一行一个。比如 /root/data、/var/log。插件自己的数据目录始终可读。",
+    "default": []
+  },
+  "allow_all_paths": {
+    "description": "放开整个文件系统",
+    "type": "bool",
+    "hint": "打开后不再限制目录（敏感文件名和敏感目录仍然拒绝）。除非你完全信任使用者，否则别开。",
+    "default": false
+  },
+  "admin_only": {
+    "description": "只允许管理员使用",
+    "type": "bool",
+    "hint": "关掉就等于谁都能让机器人发服务器文件，慎用。开了之后可以用下面的白名单额外放行。",
+    "default": true
+  },
+  "allowed_users": {
+    "description": "额外放行的 QQ 号",
+    "type": "list",
+    "hint": "这些 QQ 号即使不是 AstrBot 管理员也能用文件命令。",
+    "default": []
+  },
+  "allowed_groups": {
+    "description": "额外放行的群号",
+    "type": "list",
+    "hint": "这些群里所有人都能用文件命令。",
+    "default": []
+  },
+  "send_mode": {
+    "description": "发送通道",
+    "type": "string",
+    "options": [
+      "auto",
+      "onebot",
+      "native",
+      "base64",
+      "http"
+    ],
+    "hint": "auto=先试 OneBot 上传接口，失败再试内核文件消息，大多数情况用这个。onebot=只用 NapCat/Lagrange 的上传接口。native=只用 AstrBot 的文件消息段。base64=内联（机器人和 QQ 端不在同一台机器时用，限 20MB）。http=直连 OneBot 的 HTTP 接口。",
+    "default": "auto"
+  },
+  "onebot_http_url": {
+    "description": "OneBot HTTP 地址",
+    "type": "string",
+    "hint": "只在 send_mode=http 或 auto 兜底时用。比如 http://127.0.0.1:3000。不用就留空。",
+    "default": ""
+  },
+  "onebot_token": {
+    "description": "OneBot 访问 token",
+    "type": "string",
+    "hint": "配了 HTTP 地址而且开了鉴权才需要填。",
+    "default": ""
+  },
+  "force_base64": {
+    "description": "强制用 base64 发送",
+    "type": "bool",
+    "hint": "机器人进程和 OneBot 实现不在同一台机器上、传本地路径对方读不到时打开。单个文件超过 20MB 会自动跳过。",
+    "default": false
+  },
+  "enable_receive": {
+    "description": "允许收取文件",
+    "type": "bool",
+    "hint": "关掉后 /存 不可用，机器人只发不收。",
+    "default": true
+  },
+  "max_file_mb": {
+    "description": "单个文件大小上限（MB）",
+    "type": "int",
+    "hint": "超过就不发，避免把机器人和 QQ 通道拖死。 QQ 群文件一般限制在 100MB 以内。",
+    "default": 100
+  },
+  "max_save_mb": {
+    "description": "接收文件大小上限（MB）",
+    "type": "int",
+    "hint": "别人发来的文件超过这个大小就不保存。",
+    "default": 200
+  },
+  "max_zip_mb": {
+    "description": "打包后大小上限（MB）",
+    "type": "int",
+    "hint": "/打包 生成的压缩包超过这个大小就不发。",
+    "default": 200
+  },
+  "list_limit": {
+    "description": "目录最多显示几项",
+    "type": "int",
+    "hint": "/目录 一次列多少条，太大消息会超长。",
+    "default": 60
+  },
+  "rate_limit_per_min": {
+    "description": "每分钟最多操作次数",
+    "type": "int",
+    "hint": "防止有人刷接口。填 0 表示不限。",
+    "default": 10
+  },
+  "keep_files": {
+    "description": "保留最近多少个接收文件",
+    "type": "int",
+    "hint": "超过这个数量会自动删掉最旧的记录和文件。",
+    "default": 500
+  }
+}
